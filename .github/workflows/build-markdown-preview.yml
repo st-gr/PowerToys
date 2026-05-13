@@ -1,0 +1,99 @@
+name: Build Markdown Preview Handler
+
+on:
+  push:
+    branches: [ feature/markdown-local-images-v0.99.1 ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        platform: [x64]
+        configuration: [Release]
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        submodules: true
+        fetch-depth: 1
+
+    - name: Setup .NET 9
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '9.0.x'
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v2
+
+    - name: Setup NuGet
+      uses: nuget/setup-nuget@v2
+
+    - name: Configure NuGet sources
+      shell: pwsh
+      run: |
+        @'
+        <?xml version="1.0" encoding="utf-8"?>
+        <configuration>
+          <packageSources>
+            <clear />
+            <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+          </packageSources>
+          <packageSourceMapping>
+            <packageSource key="nuget.org">
+              <package pattern="*" />
+            </packageSource>
+          </packageSourceMapping>
+        </configuration>
+        '@ | Set-Content "NuGet.config" -Encoding UTF8
+
+    - name: Restore NuGet packages
+      run: nuget restore PowerToys.slnx -ConfigFile NuGet.config
+      continue-on-error: true
+
+    - name: Determine VCToolsVersion
+      shell: pwsh
+      run: |
+        $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+        $vsRoot = & $vswhere -latest -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property resolvedInstallationPath
+        $vcToolsRoot = Join-Path $vsRoot "VC\Tools\MSVC"
+        $latestVersion = (Get-ChildItem $vcToolsRoot | Sort-Object Name -Descending | Select-Object -First 1).Name
+        Write-Host "VCToolsVersion: $latestVersion"
+        echo "VCToolsVersion=$latestVersion" >> $env:GITHUB_ENV
+
+    - name: Build MarkdownPreviewHandler
+      run: |
+        msbuild src/modules/previewpane/MarkdownPreviewHandler/MarkdownPreviewHandler.csproj -restore -m `
+          /p:Configuration=${{ matrix.configuration }} `
+          /p:Platform=${{ matrix.platform }} `
+          /p:RestorePackagesConfig=true `
+          /p:BuildTests=false `
+          /p:NuGetAudit=false `
+          /p:TreatWarningsAsErrors=false `
+          /bl:build.binlog
+      env:
+        NUGET_PACKAGES: ${{ github.workspace }}\packages
+
+    - name: Collect artifacts
+      shell: pwsh
+      run: |
+        $outDir = "${{ matrix.platform }}\${{ matrix.configuration }}"
+        $artifactDir = "artifacts\MarkdownPreviewHandler"
+        New-Item -ItemType Directory -Force -Path $artifactDir
+        Get-ChildItem "$outDir\PowerToys.MarkdownPreviewHandler*" | Copy-Item -Destination $artifactDir -Force
+        Get-ChildItem "$outDir\PowerToys.FilePreviewCommon*" | Copy-Item -Destination $artifactDir -Force
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: MarkdownPreviewHandler-${{ matrix.platform }}-${{ matrix.configuration }}
+        path: artifacts/MarkdownPreviewHandler/
+
+    - name: Upload build log on failure
+      if: failure()
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-log
+        path: build.binlog

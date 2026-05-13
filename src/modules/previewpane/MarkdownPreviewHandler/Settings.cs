@@ -40,5 +40,43 @@ namespace Microsoft.PowerToys.PreviewHandler.Markdown
         {
             return Common.UI.ThemeManager.GetWindowsBaseColor().ToLowerInvariant();
         }
+
+        /// <summary>
+        /// Returns whether local images should be displayed in the Markdown preview.
+        /// Reads directly from settings JSON using string matching to avoid
+        /// additional assembly dependencies in the preview handler process.
+        /// </summary>
+        public static bool GetLocalImagesEnabled()
+        {
+            try
+            {
+                string settingsPath = System.IO.Path.Combine(
+                    System.Environment.GetFolderPath(System.Environment.SpecialFolder.LocalApplicationData),
+                    "Microsoft", "PowerToys", "File Explorer", "settings.json");
+                if (!System.IO.File.Exists(settingsPath))
+                {
+                    return false;
+                }
+
+                string json = System.IO.File.ReadAllText(settingsPath);
+                int idx = json.IndexOf("\"md-previewer-local-images-setting\"", StringComparison.Ordinal);
+                if (idx < 0)
+                {
+                    return false;
+                }
+
+                int valueIdx = json.IndexOf("\"value\"", idx, StringComparison.Ordinal);
+                if (valueIdx < 0)
+                {
+                    return false;
+                }
+
+                return json.IndexOf("true", valueIdx, Math.Min(20, json.Length - valueIdx), StringComparison.OrdinalIgnoreCase) >= 0;
+            }
+            catch
+            {
+                return false;
+            }
+        }
     }
 }
