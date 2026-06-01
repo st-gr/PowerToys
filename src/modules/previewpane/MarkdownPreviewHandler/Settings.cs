@@ -43,11 +43,21 @@ namespace Microsoft.PowerToys.PreviewHandler.Markdown
 
         /// <summary>
         /// Returns whether local images should be displayed in the Markdown preview.
-        /// Reads directly from settings JSON using string matching to avoid
-        /// additional assembly dependencies in the preview handler process.
+        /// GPO policy takes precedence over user setting.
         /// </summary>
         public static bool GetLocalImagesEnabled()
         {
+            int? gpoValue = GetGpoValue("ConfigureEnabledUtilityFileExplorerMarkdownLocalImages");
+            if (gpoValue == 1)
+            {
+                return true;
+            }
+
+            if (gpoValue == 0)
+            {
+                return false;
+            }
+
             try
             {
                 string settingsPath = System.IO.Path.Combine(
@@ -77,6 +87,37 @@ namespace Microsoft.PowerToys.PreviewHandler.Markdown
             {
                 return false;
             }
+        }
+
+        private static int? GetGpoValue(string valueName)
+        {
+            try
+            {
+                using var key = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Policies\PowerToys");
+                if (key != null)
+                {
+                    object val = key.GetValue(valueName);
+                    if (val is int intVal)
+                    {
+                        return intVal;
+                    }
+                }
+
+                using var userKey = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"SOFTWARE\Policies\PowerToys");
+                if (userKey != null)
+                {
+                    object val = userKey.GetValue(valueName);
+                    if (val is int intVal)
+                    {
+                        return intVal;
+                    }
+                }
+            }
+            catch
+            {
+            }
+
+            return null;
         }
     }
 }

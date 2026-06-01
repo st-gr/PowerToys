@@ -26,7 +26,7 @@ namespace Microsoft.PowerToys.FilePreviewCommon
         /// </summary>
         private static readonly string HtmlFooter = "</div></body></html>";
 
-        public static string MarkdownHtml(string fileContent, string theme, string filePath, ImagesBlockedCallBack imagesBlockedCallBack, bool allowLocalImages = false)
+        public static string MarkdownHtml(string fileContent, string theme, string filePath, ImagesBlockedCallBack imagesBlockedCallBack, bool allowLocalImages = false, string allowedBasePath = null)
         {
             var htmlHeader = theme == "dark" ? HtmlDarkHeader : HtmlLightHeader;
 
@@ -35,6 +35,7 @@ namespace Microsoft.PowerToys.FilePreviewCommon
             // Extension to modify markdown AST.
             HTMLParsingExtension extension = new HTMLParsingExtension(imagesBlockedCallBack);
             extension.FilePath = fileDir;
+            extension.AllowedBasePath = allowedBasePath ?? fileDir;
             extension.AllowLocalImages = allowLocalImages;
 
             // if you have a string with double space, some people view it as a new line.
