@@ -23,7 +23,6 @@ namespace Microsoft.PowerToys.PreviewHandler.Markdown
         [STAThread]
         public static void Main(string[] args)
         {
-            try { System.IO.File.WriteAllText(@"C:\tmp-bwx\md-main-debug.txt", $"Main called. Args: {args?.Length}\nTime: {DateTime.Now}\n"); } catch { }
             ApplicationConfiguration.Initialize();
             if (args != null)
             {
