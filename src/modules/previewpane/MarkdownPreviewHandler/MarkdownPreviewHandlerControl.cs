@@ -358,9 +358,6 @@ namespace Microsoft.PowerToys.PreviewHandler.Markdown
         }
 
         /// <summary>
-        /// Callback when image is blocked by extension.
-        /// </summary>
-        /// <summary>
         /// Returns the HTTP Content-Type for an image file based on its extension.
         /// </summary>
         /// <param name="imagePath">Path of the image file.</param>
@@ -382,6 +379,9 @@ namespace Microsoft.PowerToys.PreviewHandler.Markdown
             };
         }
 
+        /// <summary>
+        /// Callback when image is blocked by extension.
+        /// </summary>
         private void ImagesBlockedCallBack()
         {
             _infoBarDisplayed = true;
